@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: Campus Marketplace Gateway API
+  description: Шлюз каталога сувенирной продукции и заказов АИС «Электронный магазин / Маркетплейс кампуса»
+  version: 1.0.0
+servers:
+  - url: https://market.campus.example/api/v1
+    description: Учебный сервер шлюза
+paths:
+  /catalog/items:
+    get:
+      tags: [Catalog]
+      summary: Получить список товаров каталога
+      operationId: getCatalogItems
+      parameters:
+        - name: category
+          in: query
+          description: Фильтр по категории (например, clothes, stationery)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Список товаров
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogItemList'
+        '400':
+          description: Неверные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка шлюза
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/checkout:
+    post:
+      tags: [Orders]
+      summary: Оформить заказ на товары из каталога
+      operationId: checkoutOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '201':
+          description: Заказ создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '400':
+          description: Ошибка в данных заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Товара недостаточно на складе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    CatalogItem:
+      type: object
+      required: [id, name, price, stock]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 101
+        name:
+          type: string
+          example: Худи с логотипом кампуса
+        category:
+          type: string
+          example: clothes
+        price:
+          type: number
+          format: double
+          example: 2490.00
+        stock:
+          type: integer
+          description: Остаток на складе
+          example: 35
+    CatalogItemList:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogItem'
+        total:
+          type: integer
+          description: Всего товаров по фильтру
+          example: 2
+    OrderLine:
+      type: object
+      required: [itemId, quantity]
+      properties:
+        itemId:
+          type: integer
+          format: int64
+          description: Идентификатор товара из GET /catalog/items
+          example: 101
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+    CheckoutRequest:
+      type: object
+      required: [customerId, lines]
+      properties:
+        customerId:
+          type: string
+          example: student-14239
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/OrderLine'
+        paymentMethod:
+          type: string
+          enum: [card, campus_card, cash_on_pickup]
+          default: card
+    CheckoutResponse:
+      type: object
+      required: [orderId, status, total]
+      properties:
+        orderId:
+          type: string
+          example: ORD-2026-000451
+        status:
+          type: string
+          enum: [created, paid, rejected]
+          example: created
+        total:
+          type: number
+          format: double
+          example: 4980.00
+        createdAt:
+          type: string
+          format: date-time
+          example: '2026-10-30T10:15:00Z'
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: OUT_OF_STOCK
+        message:
+          type: string
+          example: Недостаточно товара на складе

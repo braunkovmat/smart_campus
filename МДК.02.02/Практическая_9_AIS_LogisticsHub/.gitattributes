@@ -1,0 +1,9 @@
+* text=auto
+*.cs text diff=csharp
+*.sql text
+*.json text
+*.md text
+*.png binary
+*.dll binary
+*.bak filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
